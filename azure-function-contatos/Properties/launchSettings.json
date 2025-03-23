@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "azure_function_contatos": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7127",
+      "launchBrowser": false
+    }
+  }
+}

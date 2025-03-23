@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "azure_function_contatos_rabbit": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7180",
+      "launchBrowser": false
+    }
+  }
+}
