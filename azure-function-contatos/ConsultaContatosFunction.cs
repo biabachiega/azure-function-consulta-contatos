@@ -5,25 +5,15 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
-using Newtonsoft.Json;
 using azure_function_contatos.Entities;
-
-using azure_function_contatos.Services;
-using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
-using System.Linq;
+using System.Net.Http;
+using System.Text.Json;
 
 namespace azure_function_contatos
 {
     public static class ConsultaContatosFunction
     {
-        private static ApplicationDbContext CreateDbContext(string connectionString)
-        {
-            var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
-            optionsBuilder.UseNpgsql(connectionString);
-
-            return new ApplicationDbContext(optionsBuilder.Options);
-        }
 
         [FunctionName("GetAllContatos")]
         public static async Task<IActionResult> GetAllContatos(
@@ -31,20 +21,39 @@ namespace azure_function_contatos
         {
             try
             {
-                var connectionString = Environment.GetEnvironmentVariable("PostgresConnectionString");
-
-                // Criação do DbContext
-                var dbContext = CreateDbContext(connectionString);
-
-                // Consulta ao banco de dados
-                var contacts = await dbContext.Contatos.ToListAsync();
-
-                return new OkObjectResult(new ApiResponse<IEnumerable<ContatosResponse>>
+                using (var client = new HttpClient())
                 {
-                    Message = "Contatos obtidos com sucesso",
-                    HasError = false,
-                    Data = contacts
-                });
+                    client.BaseAddress = new Uri("https://localhost:5003/");
+                    client.DefaultRequestHeaders.Accept.Clear();
+                    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+                    // Faz a chamada para a API Gateway
+                    HttpResponseMessage response = await client.GetAsync("gateway/contatos/getAll");
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        // Lê e desserializa a resposta da API
+                        var responseContent = await response.Content.ReadAsStringAsync();
+                        var options = new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        };
+
+                        var contatos = JsonSerializer.Deserialize<ApiResponse<IEnumerable<ContatosResponse>>>(responseContent, options);
+
+
+                        return new OkObjectResult(contatos);
+                    }
+                    else
+                    {
+                        return new BadRequestObjectResult(new ApiResponse<IEnumerable<ContatosResponse>>
+                        {
+                            Message = $"Erro ao consultar a API Gateway: {response.StatusCode}",
+                            HasError = true,
+                            Data = null
+                        });
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -56,7 +65,6 @@ namespace azure_function_contatos
                 });
             }
         }
-
         [FunctionName("GetByDDD")]
         public static async Task<IActionResult> GetByDDD(
             [HttpTrigger(AuthorizationLevel.Function, "get", Route = "contatos/getByDDD/{ddd}")] HttpRequest req,
@@ -64,29 +72,46 @@ namespace azure_function_contatos
         {
             try
             {
-                var connectionString = Environment.GetEnvironmentVariable("PostgresConnectionString");
-
-                // Criação do DbContext
-                var dbContext = CreateDbContext(connectionString);
-
-                // Filtrar contatos pelo DDD
-                var filteredContacts = await dbContext.Contatos
-                    .Where(c => c.telefone.StartsWith($"({ddd})"))
-                    .ToListAsync();
-
-                return new OkObjectResult(new ApiResponse<IEnumerable<ContatosResponse>>
+                using (var client = new HttpClient())
                 {
-                    Message = "Contatos filtrados obtidos com sucesso",
-                    HasError = false,
-                    Data = filteredContacts
-                });
+                    client.BaseAddress = new Uri("https://localhost:5003/");
+                    client.DefaultRequestHeaders.Accept.Clear();
+                    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+                    // Faz a chamada para a API Gateway
+                    HttpResponseMessage response = await client.GetAsync($"gateway/Contatos/getByDDD/{ddd}");
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        // Lê e desserializa a resposta da API
+                        var responseContent = await response.Content.ReadAsStringAsync();
+                        var options = new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        };
+
+                        var contatos = JsonSerializer.Deserialize<ApiResponse<IEnumerable<ContatosResponse>>>(responseContent, options);
+
+                        return new OkObjectResult(contatos);
+                    }
+                    else
+                    {
+                        return new BadRequestObjectResult(new ApiResponse<IEnumerable<ContatosResponse>>
+                        {
+                            Message = $"Erro ao consultar a API Gateway: {response.StatusCode}",
+                            HasError = true,
+                            Data = null
+                        });
+                    }
+                }
             }
             catch (Exception ex)
             {
                 return new BadRequestObjectResult(new ApiResponse<IEnumerable<ContatosResponse>>
                 {
                     Message = $"Erro ao obter contatos filtrados: {ex.Message}",
-                    HasError = true
+                    HasError = true,
+                    Data = null
                 });
             }
         }
@@ -98,27 +123,46 @@ namespace azure_function_contatos
         {
             try
             {
-                var connectionString = Environment.GetEnvironmentVariable("PostgresConnectionString");
-
-                // Criação do DbContext
-                var dbContext = CreateDbContext(connectionString);
-
-                // Consulta por ID
-                var contato = await dbContext.Contatos.FirstOrDefaultAsync(c => c.id == id);
-
-                return new OkObjectResult(new ApiResponse<ContatosResponse>
+                using (var client = new HttpClient())
                 {
-                    Message = "Contato obtido com sucesso",
-                    HasError = false,
-                    Data = contato
-                });
+                    client.BaseAddress = new Uri("https://localhost:5003/");
+                    client.DefaultRequestHeaders.Accept.Clear();
+                    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+                    // Faz a chamada para a API Gateway
+                    HttpResponseMessage response = await client.GetAsync($"gateway/Contatos/getById/{id}");
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        // Lê e desserializa a resposta da API
+                        var responseContent = await response.Content.ReadAsStringAsync();
+                        var options = new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        };
+
+                        var contato = JsonSerializer.Deserialize<ApiResponse<ContatosResponse>>(responseContent, options);
+
+                        return new OkObjectResult(contato);
+                    }
+                    else
+                    {
+                        return new BadRequestObjectResult(new ApiResponse<ContatosResponse>
+                        {
+                            Message = $"Erro ao consultar a API Gateway: {response.StatusCode}",
+                            HasError = true,
+                            Data = null
+                        });
+                    }
+                }
             }
             catch (Exception ex)
             {
                 return new BadRequestObjectResult(new ApiResponse<ContatosResponse>
                 {
                     Message = $"Erro ao obter contato por ID: {ex.Message}",
-                    HasError = true
+                    HasError = true,
+                    Data = null
                 });
             }
         }
